@@ -1,68 +1,82 @@
-# DeepScalp
+# MoexScalp
 
-MOEX scalping trade bot based on deep learning model.
+Deep-learning intraday **scalping bot for the Moscow Exchange (MOEX, TQBR board)**, feeding from the **T-Bank (Tinkoff) Invest API**.
 
-Uses adopted variant of [LSHASH](https://github.com/kayzhu/LSHash) to speed up similarity measurement of trading data samples.
+It represents market microstructure — the order book and the trade tape — as **volume-by-price histograms**, compresses them with autoencoders, and forecasts the **distribution of future trades** with an LSTM + attention model. A long signal is raised when the expected upside (the right tail of the forecast distribution) exceeds a threshold.
 
-# Prerequisites
+> **Attribution.** This is a fork of [bad3p/DeepScalp](https://github.com/bad3p/DeepScalp), MIT-licensed. Original copyright © 2025 Alexander Petryaev. See [LICENSE](LICENSE).
 
-* https://numpy.org/
-* https://tinkoff.github.io/invest-python/
-* https://pypi.org/project/dearpygui/
-* https://pypi.org/project/joblib/
-* https://pypi.org/project/win10toast/
-* https://pytorch.org/get-started/locally/
-* https://jsonpickle.github.io/
+---
 
-# Installation
+## Architecture
 
-* pip install numpy
-* pip install tinkoff-investments
-* pip install dearpygui
-* pip install joblib
-* pip install win10toast
-* pip install jsonpickle
-* pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+Three cooperating processes talking over local sockets (`multiprocessing.connection`):
 
-# Access token
+```
+TkGatherData ──filename──▶ TkForecastingService ──(ticker,profit)──▶ TkTradingService
+ order book +               inference of 3 models                    order execution
+ trade tape                 + DearPyGui plots                        (long-only)
+ round-robin TQBR
+```
 
-* The scripts requires T-Bank access token in order to integrate with its API. 
-* The token should be provided in environment variable TK_TOKEN on the local machine.
+**ML pipeline**
 
-# Gathering trading data
+- **Order-book autoencoder** — 1D-CNN with a VQ-VAE latent (`VectorQuantizerEMA`), input = cumulative order-book volume distribution (256 bins), output code of size 8.
+- **Trade-tape autoencoder** — CNN + residual MLP with a **Dirichlet** latent, input = trade volume distribution (128 bins), softmax output (a proper distribution), code of size 8.
+- **Time-series forecaster** — 12 prior steps × 20 features → per-slice LSTMs → multi-head attention fusion (gated residual) → MLP → 8-dim code of the **future** trade distribution, expanded back by the trade-tape decoder.
 
-* To train the models you will need to gather enough of the trading data using TkDataGatherLoop.bat
-* The script feeding from the live stock market exchange (MOEX) and outputs a set of files representing streams of trading orders and operations relevant to certain shares.
+---
 
-An example of the gathered tading data:
+## Prerequisites
 
-![python_ogQfLvLvfv](https://github.com/user-attachments/assets/c08fddd4-59ab-43b7-86d5-baa12dc2ee63)
+- Python 3.10+, **NVIDIA GPU with CUDA 11.8** (the code calls `.cuda()` directly)
+- Windows (uses `win10toast`, `.bat` launchers)
+- A **T-Bank brokerage account** and an Invest API token
 
-# Training autoencoders
+## Installation
 
-* The forecasting model uses compressed representation of orderbooks and last trades distribution samples.
-* The aforementioned compressed representation is a learnable models based on autoencoders.
-* To train those autoencoders you need to preprocess the gathered trading data using TkPreprocessAutoencoderData.py
-* Upon completion of preprocessing data, you can launch TkTrainAutoencoders. It will display feedback regarding the training process, so you can decide for yourself when it should be stopped.
+```bash
+pip install numpy tinkoff-investments dearpygui joblib win10toast jsonpickle
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
 
-  ![python_6Lbg4oOwMS](https://github.com/user-attachments/assets/3852f933-f45c-472f-8198-a7d58ba469ae)
+## Access token
 
-# Training time series forecasting model
+Provide the T-Bank Invest API token in the `TK_TOKEN` environment variable on the local machine.
 
-* With trained autoencoder models we can prepare training data for time series prediction model using TkPreprocessTimeSeriesData.py.
-* Upon completion of preprocessing data, it is all ready for launching TkTrainTimeSeries.py and training of the forecasting model. The training script will display feedback regarding the training process as well, it is just take significantly more time than training of the autoencoders.
+---
 
-![The time series model trained and reinforced with novel data.](https://github.com/user-attachments/assets/a8341555-1969-49cb-8616-db911d7e23bf)
-![The time series model trained and reinforced with novel data.](https://github.com/user-attachments/assets/b2d6351d-895e-400e-9182-e490e0b793a6)
+## Usage
 
+1. **Gather data** (needs the token; runs during trading hours):
+   `TkGatherDataLoop.bat` → writes `./Data/*.obs` snapshots of the order book and trade tape.
+2. **Train the autoencoders:**
+   `python TkPreprocessAutoencoderData.py` then `python TkTrainAutoencoders.py`.
+3. **Train the forecaster:**
+   `python TkPreprocessTimeSeriesData.py` then `python TkTrainTimeSeries.py`.
+4. **Run live** (in parallel): `TkGatherDataLoop.bat` + `python TkForecastingService.py` (+ `python TkTradingService.py`).
 
-# Using forecasting service
+## Testing
 
-In trading mode it is required to run both:
-* TkDataGatherLoop.bat - to gather realtime trading data
-* and TkForecastingService.py - to predict the price movement based on the gathered realtime trading data
+`test_deepscalp.py` is an **offline harness (Level 0)** — it needs neither token, GPU, nor collected data (it patches `.cuda()` to run on CPU). Run from the repo root:
 
-Depending on the model parameters TkForecastingService.py would need for the trading data to accumulate for some time before starting predicting price movement.
+```bash
+python test_deepscalp.py
+```
 
-https://github.com/user-attachments/assets/a25c5d02-5546-4b14-b827-2fd714ebbd98
+It checks that all nets build from the config, the autoencoders and forecaster instantiate, the forecaster forward pass works, and the `TkStatistics` volume math is correct — and it empirically flags the train/serve issue below.
 
+---
+
+## Status & known issues
+
+This is a **research prototype**, not a turnkey bot. Before relying on it:
+
+- **No pretrained models are shipped** — `Data/` and `Models/` are empty. You must gather data (days–weeks) and train from scratch.
+- **Train/serve feature mismatch.** Training builds **20** features per step (including the spread), while live `preprocess_samples` builds **19** (no spread) and normalizes price differently. The forecaster expects 20 → this must be fixed before inference is meaningful.
+- **No backtest.** There is no walk-forward evaluation and no transaction-cost/slippage model, so profitability is unproven. Execution is long-only with no stop-loss.
+- **Sampling resolution.** Round-robin polling over all TQBR tickers means each ticker is snapshotted every few minutes, not sub-second — coarse for true scalping.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
