@@ -118,7 +118,7 @@ if forecaster is not None:
 # E. Численная корректность TkStatistics на ручных мок-данных
 # ---------------------------------------------------------------------------
 try:
-    from tinkoff.invest.schemas import Quotation
+    from t_tech.invest.schemas import Quotation
     from TkModules.TkStatistics import TkStatistics
 
     def Q(units, nano=0):

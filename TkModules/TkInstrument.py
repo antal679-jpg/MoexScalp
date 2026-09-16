@@ -4,12 +4,12 @@ from decimal import Decimal
 from datetime import date, datetime, timezone, timedelta
 from collections import defaultdict
 from configparser import ConfigParser
-from tinkoff.invest import Client
-from tinkoff.invest import InstrumentIdType
-from tinkoff.invest import InstrumentType
-from tinkoff.invest import OrderDirection
-from tinkoff.invest import OrderType
-from tinkoff.invest.utils import decimal_to_quotation, quotation_to_decimal, money_to_decimal
+from t_tech.invest import Client
+from t_tech.invest import InstrumentIdType
+from t_tech.invest import InstrumentType
+from t_tech.invest import OrderDirection
+from t_tech.invest import OrderType
+from t_tech.invest.utils import decimal_to_quotation, quotation_to_decimal, money_to_decimal
 from TkModules.TkIO import TkIO
 
 #------------------------------------------------------------------------------------------------------------------------

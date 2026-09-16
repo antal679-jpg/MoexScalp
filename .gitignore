@@ -5,3 +5,14 @@ Data/Instruments/*.bond
 Data/Instruments/*.etf
 Data/_gather.queue
 .trash/
+
+# Локальное окружение и собранные/сгенерированные данные — не для репозитория
+.venv313/
+Data/*.obs
+Data/*.queue
+Data/Instruments/*.instrument
+Data/Models/*.model
+Data/Models/*.optimizer
+Data/Models/*.history
+Data/*.data
+Data/*.index

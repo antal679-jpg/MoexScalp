@@ -12,17 +12,17 @@ import multiprocessing
 import multiprocessing.connection as mpc
 from os.path import join
 from datetime import date, datetime, timedelta
-from tinkoff.invest.constants import INVEST_GRPC_API
-from tinkoff.invest import (
+from t_tech.invest.constants import INVEST_GRPC_API
+from t_tech.invest import (
     Client,
     InstrumentType,
     InstrumentIdType,
     SecurityTradingStatus,
     GetOrderBookResponse,
 )
-from tinkoff.invest.schemas import CandleInterval, TradeSourceType
-from tinkoff.invest.utils import now
-from tinkoff.invest.exceptions import RequestError
+from t_tech.invest.schemas import CandleInterval, TradeSourceType
+from t_tech.invest.utils import now
+from t_tech.invest.exceptions import RequestError
 from TkModules.TkQuotation import quotation_to_float
 from TkModules.TkIO import TkIO
 from TkModules.TkInstrument import TkInstrument
@@ -72,7 +72,7 @@ def gather_data_iteration(ticker:str, data_path:str, orderbook_file_extension:st
 
 #------------------------------------------------------------------------------------------------------------------------
 # Data gathering loop
-# Multiprocessing environment required to workaround the issues in tinkoff.invest API, resulting in blocking RPC calls.
+# Multiprocessing environment required to workaround the issues in t_tech.invest API, resulting in blocking RPC calls.
 #------------------------------------------------------------------------------------------------------------------------
 
 if __name__ ==  '__main__':

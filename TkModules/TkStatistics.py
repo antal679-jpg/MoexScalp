@@ -3,8 +3,8 @@ import sys
 import os.path
 import numpy as np
 import random
-from tinkoff.invest.schemas import Quotation
-from tinkoff.invest import GetOrderBookResponse, GetLastTradesResponse
+from t_tech.invest.schemas import Quotation
+from t_tech.invest import GetOrderBookResponse, GetLastTradesResponse
 from TkModules.TkQuotation import quotation_to_float
 
 #------------------------------------------------------------------------------------------------------------------------
