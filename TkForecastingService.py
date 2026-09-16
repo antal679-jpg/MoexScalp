@@ -653,6 +653,7 @@ def preprocess_samples(instrument:TkInstrument, samples:list, orderbook_width:in
 
     num_samples = len(samples)
     price = [0.0] * num_samples
+    spread = [0.0] * num_samples
     orderbook_volume = [0] * num_samples
     last_trades_volume = [0] * num_samples
     orderbook = [None] * num_samples
@@ -666,6 +667,7 @@ def preprocess_samples(instrument:TkInstrument, samples:list, orderbook_width:in
         if volume > 0:
             distribution *= 1.0 / volume
         price[i] = quotation_to_float( orderbook_sample.last_price )
+        spread[i] = TkStatistics.orderbook_spread( orderbook_sample, orderbook_width, min_price_increment * min_price_increment_factor )
         orderbook_volume[i] = volume
         orderbook[i] = distribution
         if main_panel != None:
@@ -712,8 +714,11 @@ def preprocess_samples(instrument:TkInstrument, samples:list, orderbook_width:in
         result[i].extend( last_trades_code[i].copy() )
 
         sample_price = price[i]
-        sample_price = ( sample_price / base_price - 1.0 ) * 100
+        sample_price = ( sample_price - base_price ) / ( min_price_increment * min_price_increment_factor )  # как на обучении: в шагах цены
         result[i].append( sample_price )
+        
+        sample_spread = spread[i] / ( min_price_increment * min_price_increment_factor )
+        result[i].append( sample_spread )
 
         sample_orderbook_volume = orderbook_volume[i]
         sample_orderbook_volume = ( sample_orderbook_volume / base_orderbook_volume - 1.0 ) * 100 if ( base_orderbook_volume > 0 ) else 0.0
