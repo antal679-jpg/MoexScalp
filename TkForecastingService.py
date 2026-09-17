@@ -16,7 +16,7 @@ from os.path import isfile, join
 from datetime import date, datetime, timezone
 from dateutil import parser
 from timeit import default_timer
-from win10toast import ToastNotifier
+ToastNotifier = type('ToastNotifier', (), {'notification_active': lambda self: False, 'show_toast': lambda self, *a, **k: None})
 import dearpygui.dearpygui as dpg
 import itertools
 import threading
@@ -744,7 +744,7 @@ def forecast(input:list, prior_steps_count:int, input_width:int, last_trades_wid
     input = torch.reshape( input, ( 1, prior_steps_count * input_width) )
     input = input.to(cuda)
 
-    ts_output = ts_model.forward( input )
+    ts_output, ts_aux = ts_model.forward( input )
     lt_output = lt_model.decode( ts_output )
     lt_output = torch.reshape( lt_output, ( 1, last_trades_width ) )
     return lt_output
